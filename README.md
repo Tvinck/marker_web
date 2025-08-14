@@ -26,6 +26,18 @@
    uvicorn backend.server:app --reload
    ```
 
+### API Overview
+The backend exposes a set of REST endpoints under the `/api` prefix. Key groups include:
+
+- `GET /api/users/me` – lazy user creation and retrieval.
+- `POST /api/users/daily-claim` – claim a daily reward.
+- Marker CRUD and actions under `/api/markers`.
+- Leaderboard data via `GET /api/leaderboard`.
+- Payment creation and webhooks via `/api/payments`.
+- Subscription and PRO activation endpoints.
+
+See `contracts.md` for the full specification of routes and payloads.
+
 ## Frontend Setup
 1. Install dependencies:
    ```bash
