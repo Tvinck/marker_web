@@ -87,30 +87,38 @@ export default function MapView({ markers, onMarkerClick, addingMode, onAddAt, s
   const markersRef = useRef([]);
   const [canLocate, setCanLocate] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const [support, setSupport] = useState(true);
+  const [mapError, setMapError] = useState(null);
 
   // init
   useEffect(() => {
-    const supported = maplibregl.supported({ failIfMajorPerformanceCaveat: false });
-    setSupport(supported);
-    if (!supported || mapRef.current) return;
+    if (mapRef.current) return;
+    let map;
+    try {
+      map = new maplibregl.Map({
+        container: mapContainer.current,
+        style: styleId === "dark" ? styleDark : styleClassic,
+        center: [37.620393, 55.75396],
+        zoom: 12,
+        attributionControl: true,
+        preserveDrawingBuffer: true,
+        failIfMajorPerformanceCaveat: false,
+      });
+    } catch (e) {
+      console.error("Map init error", e);
+      setMapError("Не удалось инициализировать карту (WebGL)");
+      return;
+    }
 
-    const map = new maplibregl.Map({
-      container: mapContainer.current,
-      style: styleId === "dark" ? styleDark : styleClassic,
-      center: [37.620393, 55.75396],
-      zoom: 12,
-      attributionControl: true,
-      preserveDrawingBuffer: true,
-      failIfMajorPerformanceCaveat: false,
-    });
     mapRef.current = map;
-
     map.addControl(new maplibregl.NavigationControl({ showZoom: true }));
 
     map.on("load", () => {
       setLoaded(true);
       setTimeout(() => map.resize(), 200);
+    });
+
+    map.on("error", (e) => {
+      console.warn("Map error", e?.error || e);
     });
 
     map.on("click", (e) => {
@@ -132,7 +140,6 @@ export default function MapView({ markers, onMarkerClick, addingMode, onAddAt, s
 
     const onResize = () => map.resize();
     window.addEventListener("resize", onResize);
-
     return () => { window.removeEventListener("resize", onResize); map.remove(); };
   }, []);
 
@@ -186,9 +193,9 @@ export default function MapView({ markers, onMarkerClick, addingMode, onAddAt, s
           Тапните по карте, чтобы поставить метку
         </div>
       )}
-      {!support && (
+      {mapError && (
         <div className="fixed left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-md bg-card p-3 text-sm shadow">
-          Не удалось отобразить карту (WebGL). Откройте в обычном браузере или включите аппаратное ускорение.
+          {mapError}
         </div>
       )}
       {canLocate && (
