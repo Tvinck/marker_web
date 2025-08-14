@@ -18,27 +18,27 @@ import { toast } from "./hooks/use-toast";
 import { Plus, Check, Star, Sun, Moon, Crown, MapPin, MessageSquare, ThumbsUp, Upload } from "lucide-react";
 import { useTheme } from "./hooks/useTheme";
 
-import {
-  initClient,
-  getStore,
-  getMarkers,
-  addMarker,
-  confirmMarker,
-  addComment,
-  rateMarker,
-  leaderboard,
-  mapStyles,
-  updateUser,
-  claimDaily,
-  tryActivateProFromPoints,
-  grantProTrial,
-  isTop10FreePro,
-  getPending,
-  adminApprove,
-  mockCreateEnotPayment,
-  isAdmin,
-  myMarkers,
-} from "./mock/mock";
+  import {
+    initClient,
+    getStore,
+    getMarkers,
+    addMarker,
+    confirmMarker,
+    addComment,
+    rateMarker,
+    leaderboard,
+    mapStyles,
+    updateUser,
+    claimDaily,
+    tryActivateProFromPoints,
+    grantProTrial,
+    isTop10FreePro,
+    getPending,
+    adminApprove,
+    mockCreateEnotPayment,
+    isAdmin,
+    myMarkers,
+  } from "./lib/api";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
