@@ -20,47 +20,68 @@ const styleClassic = {
   ],
 };
 
+const styleDark = {
+  version: 8,
+  sources: {
+    dark: {
+      type: "raster",
+      tiles: ["https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"],
+      tileSize: 256,
+      attribution: "© OpenStreetMap contributors © CARTO",
+    },
+  },
+  layers: [
+    { id: "background", type: "background", paint: { "background-color": "#0b0b0b" } },
+    { id: "dark", type: "raster", source: "dark" },
+  ],
+};
+
+const typeStyles = {
+  dps: { color: "bg-red-500", ring: "ring-red-300/80" },
+  camera: { color: "bg-amber-500", ring: "ring-amber-300/80" },
+  parking: { color: "bg-emerald-500", ring: "ring-emerald-300/80" },
+  fire: { color: "bg-red-600", ring: "ring-red-400/80" },
+  ambulance: { color: "bg-rose-500", ring: "ring-rose-300/80" },
+  post: { color: "bg-blue-500", ring: "ring-blue-300/80" },
+  repair: { color: "bg-amber-600", ring: "ring-amber-400/80" },
+  accident: { color: "bg-orange-600", ring: "ring-orange-400/80" },
+  bump: { color: "bg-yellow-500", ring: "ring-yellow-300/80" },
+  traffic: { color: "bg-orange-500", ring: "ring-orange-300/80" },
+};
+
 const iconByType = (type) => {
   switch (type) {
-    case "dps":
-      return { Icon: ShieldAlert, color: "bg-red-500" };
-    case "camera":
-      return { Icon: Camera, color: "bg-amber-500" };
-    case "parking":
-      return { Icon: ParkingCircle, color: "bg-emerald-500" };
-    case "fire":
-      return { Icon: Flame, color: "bg-red-600" };
-    case "ambulance":
-      return { Icon: Ambulance, color: "bg-rose-500" };
-    case "post":
-      return { Icon: Shield, color: "bg-blue-500" };
-    case "repair":
-      return { Icon: Wrench, color: "bg-amber-600" };
-    case "accident":
-      return { Icon: AlertTriangle, color: "bg-orange-600" };
-    case "bump":
-      return { Icon: Waves, color: "bg-yellow-500" };
-    case "traffic":
-      return { Icon: TrafficCone, color: "bg-orange-500" };
-    default:
-      return { Icon: AlertTriangle, color: "bg-blue-500" };
+    case "dps": return ShieldAlert;
+    case "camera": return Camera;
+    case "parking": return ParkingCircle;
+    case "fire": return Flame;
+    case "ambulance": return Ambulance;
+    case "post": return Shield;
+    case "repair": return Wrench;
+    case "accident": return AlertTriangle;
+    case "bump": return Waves;
+    case "traffic": return TrafficCone;
+    default: return AlertTriangle;
   }
 };
 
 function MarkerEl({ marker, onClick }) {
-  const { Icon, color } = iconByType(marker.type);
+  const Icon = iconByType(marker.type);
+  const ts = typeStyles[marker.type] || { color: "bg-blue-500", ring: "ring-blue-300/80" };
+  const pulse = marker.confirmations > 5;
   return (
     <button
-      className={`rounded-full ${color} text-white shadow-md border border-white/70 p-1 hover:scale-110 transition-transform`}
+      className={`relative flex h-9 w-9 items-center justify-center rounded-full ${ts.color} text-white shadow-[0_6px_14px_rgba(0,0,0,0.25)] border border-white/80 ring-2 ${ts.ring} hover:scale-110 transition-transform`}
       onClick={onClick}
       aria-label={marker.title}
     >
+      {pulse && <span className="absolute inset-0 -z-10 animate-ping rounded-full bg-white/20" />}
       <Icon size={18} />
     </button>
   );
 }
 
-export default function MapView({ markers, onMarkerClick, addingMode, onAddAt }) {
+export default function MapView({ markers, onMarkerClick, addingMode, onAddAt, styleId = "classic" }) {
   const mapRef = useRef(null);
   const mapContainer = useRef(null);
   const markersRef = useRef([]);
@@ -71,7 +92,7 @@ export default function MapView({ markers, onMarkerClick, addingMode, onAddAt })
     if (mapRef.current) return;
     const map = new maplibregl.Map({
       container: mapContainer.current,
-      style: styleClassic,
+      style: styleId === "dark" ? styleDark : styleClassic,
       center: [37.620393, 55.75396],
       zoom: 12,
       attributionControl: true,
@@ -98,7 +119,15 @@ export default function MapView({ markers, onMarkerClick, addingMode, onAddAt })
     }
 
     return () => map.remove();
-  }, [addingMode, onAddAt]);
+  }, []);
+
+  // react to style change
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const st = styleId === "dark" ? styleDark : styleClassic;
+    try { map.setStyle(st); } catch {}
+  }, [styleId]);
 
   const locateMe = () => {
     if (!navigator.geolocation) return;
@@ -117,7 +146,6 @@ export default function MapView({ markers, onMarkerClick, addingMode, onAddAt })
     const map = mapRef.current;
     if (!map) return;
 
-    // clear existing
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
@@ -126,7 +154,9 @@ export default function MapView({ markers, onMarkerClick, addingMode, onAddAt })
       const root = createRoot(el);
       root.render(<MarkerEl marker={m} onClick={() => onMarkerClick(m)} />);
 
-      const inst = new maplibregl.Marker({ element: el }).setLngLat([m.location.lng, m.location.lat]).addTo(map);
+      const inst = new maplibregl.Marker({ element: el, anchor: "center" })
+        .setLngLat([m.location.lng, m.location.lat])
+        .addTo(map);
       markersRef.current.push(inst);
     });
   }, [markers, onMarkerClick]);
