@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { createRoot } from "react-dom/client";
-import { ShieldAlert, Camera, ParkingCircle, AlertTriangle } from "lucide-react";
+import { ShieldAlert, Camera, ParkingCircle, AlertTriangle, Flame, Ambulance, Shield, Wrench, Waves, TrafficCone } from "lucide-react";
 
 const styleClassic = {
   version: 8,
@@ -28,6 +28,20 @@ const iconByType = (type) => {
       return { Icon: Camera, color: "bg-amber-500" };
     case "parking":
       return { Icon: ParkingCircle, color: "bg-emerald-500" };
+    case "fire":
+      return { Icon: Flame, color: "bg-red-600" };
+    case "ambulance":
+      return { Icon: Ambulance, color: "bg-rose-500" };
+    case "post":
+      return { Icon: Shield, color: "bg-blue-500" };
+    case "repair":
+      return { Icon: Wrench, color: "bg-amber-600" };
+    case "accident":
+      return { Icon: AlertTriangle, color: "bg-orange-600" };
+    case "bump":
+      return { Icon: Waves, color: "bg-yellow-500" };
+    case "traffic":
+      return { Icon: TrafficCone, color: "bg-orange-500" };
     default:
       return { Icon: AlertTriangle, color: "bg-blue-500" };
   }

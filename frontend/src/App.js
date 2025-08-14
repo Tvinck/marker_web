@@ -14,7 +14,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./components/ui/sh
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./components/ui/select";
 import { Badge } from "./components/ui/badge";
 import { toast } from "./hooks/use-toast";
-import { Plus, Check, Star } from "lucide-react";
+import { Plus, Check, Star, Sun, Moon } from "lucide-react";
+import { useTheme } from "./hooks/useTheme";
 
 import {
   initClient,
@@ -42,12 +43,35 @@ function useClientId() {
   return clientId;
 }
 
+const TYPE_LIST = [
+  { id: "dps", label: "ДПС" },
+  { id: "camera", label: "Камера" },
+  { id: "parking", label: "Парковка" },
+  { id: "fire", label: "Пожар" },
+  { id: "ambulance", label: "Скорая" },
+  { id: "post", label: "Пост" },
+  { id: "repair", label: "Ремонт" },
+  { id: "accident", label: "Авария" },
+  { id: "bump", label: "Неровность" },
+  { id: "traffic", label: "Затор" },
+];
+
 function MapPage() {
   const clientId = useClientId();
   const [store, setStore] = useState(() => initClient(clientId));
   const [adding, setAdding] = useState(false);
   const [selected, setSelected] = useState(null);
-  const [filter, setFilter] = useState({ dps: true, parking: true, camera: true });
+  const [filter, setFilter] = useState(() => Object.fromEntries(TYPE_LIST.map(t => [t.id, true])));
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [newType, setNewType] = useState("dps");
+
+  useEffect(() => {
+    const k = `marker_onboarded_v1_${clientId}`;
+    if (!localStorage.getItem(k)) {
+      setShowOnboarding(true);
+      localStorage.setItem(k, "1");
+    }
+  }, [clientId]);
 
   const markers = useMemo(() => {
     const all = getMarkers(clientId);
@@ -66,6 +90,10 @@ function MapPage() {
     const description = fd.get("description");
     const coords = selected.coords;
     addMarker(clientId, { type, title, description, location: coords });
+    // Небольшой бонус автору
+    const u = getStore(clientId).user;
+    updateUser(clientId, { points: (u.points || 0) + 3 });
+
     setSelected(null);
     setAdding(false);
     setStore({ ...getStore(clientId) });
@@ -94,14 +122,33 @@ function MapPage() {
         <Button variant={adding ? "default" : "secondary"} size="sm" onClick={() => setAdding((s) => !s)}>
           <Plus className="mr-1" size={16} /> Новая метка
         </Button>
-        <div className="ml-auto flex items-center gap-2 text-xs">
-          <label className="flex items-center gap-1"><input type="checkbox" checked={filter.dps} onChange={(e) => setFilter((f) => ({ ...f, dps: e.target.checked }))} />ДПС</label>
-          <label className="flex items-center gap-1"><input type="checkbox" checked={filter.parking} onChange={(e) => setFilter((f) => ({ ...f, parking: e.target.checked }))} />Парковки</label>
-          <label className="flex items-center gap-1"><input type="checkbox" checked={filter.camera} onChange={(e) => setFilter((f) => ({ ...f, camera: e.target.checked }))} />Камеры</label>
+        <div className="ml-auto flex items-center gap-3 overflow-x-auto text-xs">
+          {TYPE_LIST.map((t) => (
+            <label key={t.id} className="flex min-w-max items-center gap-1">
+              <input type="checkbox" checked={!!filter[t.id]} onChange={(e) => setFilter((f) => ({ ...f, [t.id]: e.target.checked }))} />{t.label}
+            </label>
+          ))}
         </div>
       </div>
 
       <MapView markers={markers} onMarkerClick={setSelected} addingMode={adding} onAddAt={onAddAt} />
+
+      {/* Onboarding */}
+      <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Как пользоваться</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 text-sm">
+            <p>— Нажмите «Новая метка», затем тапните по карте и заполните форму.</p>
+            <p>— Подтверждайте метки и оставляйте комментарии, чтобы зарабатывать баллы.</p>
+            <p>— Топ‑10 пользователей получают PRO бесплатно.</p>
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={() => setShowOnboarding(false)}>Понятно</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Marker details / new marker form */}
       <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
@@ -111,15 +158,16 @@ function MapPage() {
           </SheetHeader>
           {selected?.mode === "new" ? (
             <form className="space-y-3 py-3" onSubmit={onSubmitNew}>
+              <input type="hidden" name="type" value={newType} />
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Тип</Label>
-                  <Select name="type" defaultValue="dps">
+                  <Select value={newType} onValueChange={setNewType}>
                     <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="dps">Пост ДПС</SelectItem>
-                      <SelectItem value="parking">Парковка</SelectItem>
-                      <SelectItem value="camera">Камера</SelectItem>
+                      {TYPE_LIST.map(t => (
+                        <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -320,6 +368,7 @@ function ProPage() {
 function ProfilePage() {
   const clientId = useClientId();
   const [user, setUser] = useState(getStore(clientId).user);
+  const { theme, toggle } = useTheme();
 
   const claim = () => {
     const res = claimDaily(clientId);
@@ -337,7 +386,12 @@ function ProfilePage() {
               <div className="text-base font-semibold">{user.name} {user.isPro && <Badge className="ml-2">PRO</Badge>}</div>
               <div className="text-sm text-muted-foreground">Баллы: {user.points}</div>
             </div>
-            <Button variant="secondary" onClick={claim}>Ежедневная награда</Button>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" onClick={claim}>Ежедневная награда</Button>
+              <Button variant="outline" onClick={toggle} aria-label="Сменить тему">
+                {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
