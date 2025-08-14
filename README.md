@@ -21,6 +21,8 @@
    ```
 3. Run the development server:
    ```bash
+   python backend/server.py
+   # or
    uvicorn backend.server:app --reload
    ```
 
