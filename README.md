@@ -3,7 +3,7 @@
 ## Project Structure
 - `backend/` – FastAPI application providing the API.
 - `frontend/` – React application built with Tailwind CSS.
-- `tests/` – automated tests (currently empty placeholder).
+- `tests/` – automated backend tests.
 
 ## Requirements
 - **Python** 3.11+
@@ -36,6 +36,20 @@
    ```bash
    yarn build
    ```
+
+## Tests
+### Backend
+Run the Python tests from the repository root:
+```bash
+pytest
+```
+
+### Frontend
+Execute component tests from the `frontend` folder:
+```bash
+cd frontend
+yarn test --watchAll=false
+```
 
 ## Docker Compose
 1. Build and start all services:
