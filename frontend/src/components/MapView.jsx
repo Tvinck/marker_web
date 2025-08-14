@@ -87,16 +87,22 @@ export default function MapView({ markers, onMarkerClick, addingMode, onAddAt, s
   const markersRef = useRef([]);
   const [canLocate, setCanLocate] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [support, setSupport] = useState(true);
 
   // init
   useEffect(() => {
-    if (mapRef.current) return;
+    const supported = maplibregl.supported({ failIfMajorPerformanceCaveat: false });
+    setSupport(supported);
+    if (!supported || mapRef.current) return;
+
     const map = new maplibregl.Map({
       container: mapContainer.current,
       style: styleId === "dark" ? styleDark : styleClassic,
       center: [37.620393, 55.75396],
       zoom: 12,
       attributionControl: true,
+      preserveDrawingBuffer: true,
+      failIfMajorPerformanceCaveat: false,
     });
     mapRef.current = map;
 
@@ -171,17 +177,24 @@ export default function MapView({ markers, onMarkerClick, addingMode, onAddAt, s
   }, [markers, onMarkerClick, loaded]);
 
   return (
-    <div className="relative h-[calc(100dvh-140px)] sm:h-[calc(100vh-140px)] w-full rounded-md overflow-hidden">
-      <div ref={mapContainer} className="absolute inset-0" />
+    <div className="relative w-full">
+      <div className="fixed left-0 right-0 top-[64px] bottom-[88px]">
+        <div ref={mapContainer} className="absolute inset-0" />
+      </div>
       {addingMode && (
-        <div className="absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-card px-3 py-1 text-sm shadow">
+        <div className="pointer-events-none fixed left-1/2 top-[72px] -translate-x-1/2 rounded-full bg-card px-3 py-1 text-sm shadow">
           Тапните по карте, чтобы поставить метку
+        </div>
+      )}
+      {!support && (
+        <div className="fixed left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-md bg-card p-3 text-sm shadow">
+          Не удалось отобразить карту (WebGL). Откройте в обычном браузере или включите аппаратное ускорение.
         </div>
       )}
       {canLocate && (
         <button
           onClick={locateMe}
-          className="absolute bottom-[96px] right-3 inline-flex items-center gap-1 rounded-full bg-primary px-3 py-2 text-sm text-primary-foreground shadow hover:opacity-90"
+          className="fixed bottom-[120px] right-3 inline-flex items-center gap-1 rounded-full bg-primary px-3 py-2 text-sm text-primary-foreground shadow hover:opacity-90"
         >
           <Crosshair size={16} /> Я тут
         </button>
