@@ -104,6 +104,7 @@ export function initClient(clientId) {
         showCameras: true,
       },
     },
+    admins: ["12345"],
     markers: seedMarkers(userId),
     // admin
     pending: [],
@@ -142,6 +143,8 @@ export function addMarker(clientId, marker) {
     ...marker,
   };
   s.pending.unshift(newMarker);
+  // +5 баллов за новую метку (создание)
+  s.user.points = (s.user.points || 0) + 5;
   writeStore(clientId, s);
   return newMarker;
 }
@@ -169,7 +172,7 @@ export function confirmMarker(clientId, markerId) {
   if (!marker.confirmationsBy.includes(uid_)) {
     marker.confirmationsBy.push(uid_);
     marker.confirmations += 1;
-    s.user.points += 2; // геймификация
+    s.user.points += 2; // подтверждение
   }
   writeStore(clientId, s);
   return marker;
@@ -180,7 +183,7 @@ export function addComment(clientId, markerId, text) {
   const marker = s.markers.find((m) => m.id === markerId);
   if (!marker) return;
   marker.comments.push({ id: uid(), userId: s.user.id, text, createdAt: now() });
-  s.user.points += 1;
+  s.user.points += 1; // комментарий
   writeStore(clientId, s);
   return marker;
 }
@@ -190,8 +193,12 @@ export function rateMarker(clientId, markerId, value) {
   const marker = s.markers.find((m) => m.id === markerId);
   if (!marker) return;
   const i = marker.ratingsBy.findIndex((r) => r.userId === s.user.id);
-  if (i === -1) marker.ratingsBy.push({ userId: s.user.id, value });
-  else marker.ratingsBy[i].value = value;
+  if (i === -1) {
+    marker.ratingsBy.push({ userId: s.user.id, value });
+    s.user.points += 1; // рейтинг
+  } else {
+    marker.ratingsBy[i].value = value;
+  }
   writeStore(clientId, s);
   return marker;
 }
@@ -231,7 +238,7 @@ export function claimDaily(clientId) {
   const isSameDay = last && last.toDateString() === today.toDateString();
   if (isSameDay) return { ok: false, message: "Сегодня уже получено" };
   s.user.dailyClaimedAt = today.toISOString();
-  s.user.points += 10;
+  s.user.points += 10; // ежедневная
   writeStore(clientId, s);
   return { ok: true, points: s.user.points };
 }
@@ -279,4 +286,9 @@ export function mapStyles() {
 
 export function getPending(clientId) {
   return getStore(clientId).pending;
+}
+
+export function isAdmin(clientId) {
+  const s = getStore(clientId);
+  return s.admins && s.admins.includes(String(s.user.id));
 }

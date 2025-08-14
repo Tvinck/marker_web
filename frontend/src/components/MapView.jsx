@@ -1,8 +1,8 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { createRoot } from "react-dom/client";
-import { ShieldAlert, Camera, ParkingCircle, AlertTriangle, Flame, Ambulance, Shield, Wrench, Waves, TrafficCone } from "lucide-react";
+import { ShieldAlert, Camera, ParkingCircle, AlertTriangle, Flame, Ambulance, Shield, Wrench, Waves, TrafficCone, Crosshair } from "lucide-react";
 
 const styleClassic = {
   version: 8,
@@ -64,6 +64,7 @@ export default function MapView({ markers, onMarkerClick, addingMode, onAddAt })
   const mapRef = useRef(null);
   const mapContainer = useRef(null);
   const markersRef = useRef([]);
+  const [canLocate, setCanLocate] = useState(false);
 
   // init
   useEffect(() => {
@@ -84,8 +85,32 @@ export default function MapView({ markers, onMarkerClick, addingMode, onAddAt })
       onAddAt && onAddAt({ lng: e.lngLat.lng, lat: e.lngLat.lat });
     });
 
+    if (navigator.geolocation) {
+      setCanLocate(true);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { longitude, latitude } = pos.coords;
+          try { map.flyTo({ center: [longitude, latitude], zoom: 14 }); } catch {}
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    }
+
     return () => map.remove();
   }, [addingMode, onAddAt]);
+
+  const locateMe = () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { longitude, latitude } = pos.coords;
+        try { mapRef.current?.flyTo({ center: [longitude, latitude], zoom: 15 }); } catch {}
+      },
+      () => {},
+      { enableHighAccuracy: true, timeout: 5000 }
+    );
+  };
 
   // render markers
   useEffect(() => {
@@ -113,6 +138,14 @@ export default function MapView({ markers, onMarkerClick, addingMode, onAddAt })
         <div className="absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-card px-3 py-1 text-sm shadow">
           Тапните по карте, чтобы поставить метку
         </div>
+      )}
+      {canLocate && (
+        <button
+          onClick={locateMe}
+          className="absolute bottom-24 right-3 inline-flex items-center gap-1 rounded-full bg-primary px-3 py-2 text-sm text-primary-foreground shadow hover:opacity-90"
+        >
+          <Crosshair size={16} /> Я тут
+        </button>
       )}
     </div>
   );

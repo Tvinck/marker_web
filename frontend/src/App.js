@@ -14,7 +14,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./components/ui/sh
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./components/ui/select";
 import { Badge } from "./components/ui/badge";
 import { toast } from "./hooks/use-toast";
-import { Plus, Check, Star, Sun, Moon } from "lucide-react";
+import { Plus, Check, Star, Sun, Moon, Crown, MapPin, MessageSquare, ThumbsUp } from "lucide-react";
 import { useTheme } from "./hooks/useTheme";
 
 import {
@@ -35,6 +35,7 @@ import {
   getPending,
   adminApprove,
   mockCreateEnotPayment,
+  isAdmin,
 } from "./mock/mock";
 
 function useClientId() {
@@ -90,30 +91,30 @@ function MapPage() {
     const description = fd.get("description");
     const coords = selected.coords;
     addMarker(clientId, { type, title, description, location: coords });
-    // Небольшой бонус автору
-    const u = getStore(clientId).user;
-    updateUser(clientId, { points: (u.points || 0) + 3 });
 
     setSelected(null);
     setAdding(false);
     setStore({ ...getStore(clientId) });
-    toast({ title: "Отправлено на модерацию", description: "Метка появится после подтверждения" });
+    toast({ title: "Отправлено на модерацию", description: "Метка появится после подтверждения (+5 баллов)" });
   };
 
   const onConfirm = (id) => {
     confirmMarker(clientId, id);
     setStore({ ...getStore(clientId) });
+    toast({ title: "+2 балла за подтверждение" });
   };
 
   const onComment = (id, text) => {
     if (!text) return;
     addComment(clientId, id, text);
     setStore({ ...getStore(clientId) });
+    toast({ title: "+1 балл за комментарий" });
   };
 
   const onRate = (id, v) => {
     rateMarker(clientId, id, v);
     setStore({ ...getStore(clientId) });
+    toast({ title: "+1 балл за оценку" });
   };
 
   return (
@@ -133,19 +134,35 @@ function MapPage() {
 
       <MapView markers={markers} onMarkerClick={setSelected} addingMode={adding} onAddAt={onAddAt} />
 
-      {/* Onboarding */}
+      {/* Onboarding - улучшен визуально */}
       <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Как пользоваться</DialogTitle>
+            <DialogTitle className="text-xl">Добро пожаловать в Маркер</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2 text-sm">
-            <p>— Нажмите «Новая метка», затем тапните по карте и заполните форму.</p>
-            <p>— Подтверждайте метки и оставляйте комментарии, чтобы зарабатывать баллы.</p>
-            <p>— Топ‑10 пользователей получают PRO бесплатно.</p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Card className="bg-card">
+              <CardHeader className="p-3">
+                <div className="flex items-center gap-2 text-primary"><MapPin size={18}/><span className="font-medium">Метки</span></div>
+              </CardHeader>
+              <CardContent className="p-3 text-sm text-muted-foreground">Добавляйте точки на карту (тап по карте), описывайте ситуацию.</CardContent>
+            </Card>
+            <Card className="bg-card">
+              <CardHeader className="p-3">
+                <div className="flex items-center gap-2 text-primary"><ThumbsUp size={18}/><span className="font-medium">Подтверждайте</span></div>
+              </CardHeader>
+              <CardContent className="p-3 text-sm text-muted-foreground">Подтверждайте актуальные метки — помогайте другим.</CardContent>
+            </Card>
+            <Card className="bg-card">
+              <CardHeader className="p-3">
+                <div className="flex items-center gap-2 text-primary"><MessageSquare size={18}/><span className="font-medium">Комментируйте</span></div>
+              </CardHeader>
+              <CardContent className="p-3 text-sm text-muted-foreground">Оставляйте комментарии и зарабатывайте баллы.</CardContent>
+            </Card>
           </div>
+          <div className="rounded-md bg-secondary p-3 text-xs text-muted-foreground">Топ‑10 пользователей получают PRO бесплатно, пока держатся в рейтинге.</div>
           <div className="flex justify-end">
-            <Button onClick={() => setShowOnboarding(false)}>Понятно</Button>
+            <Button onClick={() => setShowOnboarding(false)}>Начать</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -402,6 +419,14 @@ function ProfilePage() {
 function AdminPage() {
   const clientId = useClientId();
   const [pending, setPending] = useState(getPending(clientId));
+
+  if (!isAdmin(clientId)) {
+    return (
+      <MainLayout title="Модерация">
+        <p className="text-sm text-muted-foreground">Доступ запрещён. Вы не администратор.</p>
+      </MainLayout>
+    );
+  }
 
   const act = (id, ok) => {
     adminApprove(clientId, id, ok);
