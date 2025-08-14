@@ -37,6 +37,19 @@
    yarn build
    ```
 
+## Docker Compose
+1. Build and start all services:
+   ```bash
+   docker-compose up --build
+   ```
+   - Backend API: http://localhost:8000
+   - Frontend UI: http://localhost:3000
+   - MongoDB: mongodb://localhost:27017 (data stored in `mongo-data` volume)
+2. Stop the containers:
+   ```bash
+   docker-compose down
+   ```
+
 ## Deployment
 1. Ensure the host has Python, Node.js, and MongoDB installed.
 2. Configure `backend/.env` with the production MongoDB connection and other settings.
