@@ -86,6 +86,7 @@ export default function MapView({ markers, onMarkerClick, addingMode, onAddAt, s
   const mapContainer = useRef(null);
   const markersRef = useRef([]);
   const [canLocate, setCanLocate] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   // init
   useEffect(() => {
@@ -100,6 +101,11 @@ export default function MapView({ markers, onMarkerClick, addingMode, onAddAt, s
     mapRef.current = map;
 
     map.addControl(new maplibregl.NavigationControl({ showZoom: true }));
+
+    map.on("load", () => {
+      setLoaded(true);
+      setTimeout(() => map.resize(), 200);
+    });
 
     map.on("click", (e) => {
       if (!addingMode) return;
@@ -118,7 +124,10 @@ export default function MapView({ markers, onMarkerClick, addingMode, onAddAt, s
       );
     }
 
-    return () => map.remove();
+    const onResize = () => map.resize();
+    window.addEventListener("resize", onResize);
+
+    return () => { window.removeEventListener("resize", onResize); map.remove(); };
   }, []);
 
   // react to style change
@@ -144,7 +153,7 @@ export default function MapView({ markers, onMarkerClick, addingMode, onAddAt, s
   // render markers
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map || !loaded) return;
 
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
@@ -159,10 +168,10 @@ export default function MapView({ markers, onMarkerClick, addingMode, onAddAt, s
         .addTo(map);
       markersRef.current.push(inst);
     });
-  }, [markers, onMarkerClick]);
+  }, [markers, onMarkerClick, loaded]);
 
   return (
-    <div className="relative h-[calc(100vh-56px)] w-full">
+    <div className="relative h-[calc(100dvh-140px)] sm:h-[calc(100vh-140px)] w-full rounded-md overflow-hidden">
       <div ref={mapContainer} className="absolute inset-0" />
       {addingMode && (
         <div className="absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-card px-3 py-1 text-sm shadow">
@@ -172,7 +181,7 @@ export default function MapView({ markers, onMarkerClick, addingMode, onAddAt, s
       {canLocate && (
         <button
           onClick={locateMe}
-          className="absolute bottom-24 right-3 inline-flex items-center gap-1 rounded-full bg-primary px-3 py-2 text-sm text-primary-foreground shadow hover:opacity-90"
+          className="absolute bottom-[96px] right-3 inline-flex items-center gap-1 rounded-full bg-primary px-3 py-2 text-sm text-primary-foreground shadow hover:opacity-90"
         >
           <Crosshair size={16} /> Я тут
         </button>
