@@ -5,16 +5,8 @@ import { createRoot } from "react-dom/client";
 import { ShieldAlert, Camera, ParkingCircle, AlertTriangle, Flame, Ambulance, Shield, Wrench, Waves, TrafficCone, Crosshair } from "lucide-react";
 import FallbackLeaflet from "./FallbackLeaflet";
 
-const styleClassic = {
-  version: 8,
-  sources: { osm: { type: "raster", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], tileSize: 256, attribution: "© OpenStreetMap contributors" } },
-  layers: [ { id: "background", type: "background", paint: { "background-color": "#f8f9fb" } }, { id: "osm", type: "raster", source: "osm" } ],
-};
-const styleDark = {
-  version: 8,
-  sources: { dark: { type: "raster", tiles: ["https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"], tileSize: 256, attribution: "© OpenStreetMap contributors © CARTO" } },
-  layers: [ { id: "background", type: "background", paint: { "background-color": "#0b0b0b" } }, { id: "dark", type: "raster", source: "dark" } ],
-};
+const styleClassic = { version: 8, sources: { osm: { type: "raster", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], tileSize: 256, attribution: "© OpenStreetMap contributors" } }, layers: [ { id: "background", type: "background", paint: { "background-color": "#f8f9fb" } }, { id: "osm", type: "raster", source: "osm" } ] };
+const styleDark = { version: 8, sources: { dark: { type: "raster", tiles: ["https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"], tileSize: 256, attribution: "© OpenStreetMap contributors © CARTO" } }, layers: [ { id: "background", type: "background", paint: { "background-color": "#0b0b0b" } }, { id: "dark", type: "raster", source: "dark" } ] };
 
 const typeStyles = { dps:{color:"bg-red-500",ring:"ring-red-300/80"}, camera:{color:"bg-amber-500",ring:"ring-amber-300/80"}, parking:{color:"bg-emerald-500",ring:"ring-emerald-300/80"}, fire:{color:"bg-red-600",ring:"ring-red-400/80"}, ambulance:{color:"bg-rose-500",ring:"ring-rose-300/80"}, post:{color:"bg-blue-500",ring:"ring-blue-300/80"}, repair:{color:"bg-amber-600",ring:"ring-amber-400/80"}, accident:{color:"bg-orange-600",ring:"ring-orange-400/80"}, bump:{color:"bg-yellow-500",ring:"ring-yellow-300/80"}, traffic:{color:"bg-orange-500",ring:"ring-orange-300/80"} };
 
@@ -25,11 +17,12 @@ function MarkerEl({ marker, onClick }) { const Icon = iconByType(marker.type); c
 export default function MapView({ markers, onMarkerClick, addingMode, onAddAt, styleId = "classic" }) {
   const mapRef = useRef(null); const mapContainer = useRef(null); const markersRef = useRef([]);
   const [canLocate, setCanLocate] = useState(false); const [loaded, setLoaded] = useState(false); const [mapError, setMapError] = useState(null);
-  const [useFallback, setUseFallback] = useState(false);
+  const [useFallback, setUseFallback] = useState(true); // принудительно Leaflet для надёжности сейчас
+  const leafletRef = useRef(null);
 
-  // init
+  // init MapLibre (выключено по умолчанию, включу позже)
   useEffect(() => {
-    if (mapRef.current) return;
+    if (useFallback || mapRef.current) return;
     try {
       const map = new maplibregl.Map({ container: mapContainer.current, style: styleId === "dark" ? styleDark : styleClassic, center: [37.620393, 55.75396], zoom: 12, attributionControl: true, preserveDrawingBuffer: true, failIfMajorPerformanceCaveat: false });
       mapRef.current = map;
@@ -44,14 +37,25 @@ export default function MapView({ markers, onMarkerClick, addingMode, onAddAt, s
       setUseFallback(true);
       setMapError("WebGL недоступен, включён упрощённый режим карты");
     }
-  }, []);
+  }, [useFallback]);
 
-  // react to style change
-  useEffect(() => { const map = mapRef.current; if (!map) return; const st = styleId === "dark" ? styleDark : styleClassic; try { map.setStyle(st); } catch {} }, [styleId]);
+  // react to style change (MapLibre only)
+  useEffect(() => { if (useFallback) return; const map = mapRef.current; if (!map) return; const st = styleId === "dark" ? styleDark : styleClassic; try { map.setStyle(st); } catch {} }, [styleId, useFallback]);
 
-  const locateMe = () => { if (!navigator.geolocation) return; navigator.geolocation.getCurrentPosition((pos) => { try { mapRef.current?.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 15 }); } catch {} }); };
+  const locateMe = () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition((pos) => {
+      try {
+        if (useFallback && leafletRef.current) {
+          leafletRef.current.setView([pos.coords.latitude, pos.coords.longitude], 15);
+        } else {
+          mapRef.current?.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 15 });
+        }
+      } catch {}
+    });
+  };
 
-  // render markers
+  // render markers (MapLibre)
   useEffect(() => {
     if (useFallback) return; const map = mapRef.current; if (!map || !loaded) return; markersRef.current.forEach((m) => m.remove()); markersRef.current = []; markers.forEach((m) => { const el = document.createElement("div"); const root = createRoot(el); root.render(<MarkerEl marker={m} onClick={() => onMarkerClick(m)} />); const inst = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([m.location.lng, m.location.lat]).addTo(map); markersRef.current.push(inst); });
   }, [markers, onMarkerClick, loaded, useFallback]);
@@ -60,7 +64,7 @@ export default function MapView({ markers, onMarkerClick, addingMode, onAddAt, s
     <div className="relative w-full">
       <div className="fixed left-0 right-0 top-[64px] bottom-[88px]">
         {useFallback ? (
-          <FallbackLeaflet markers={markers} onClick={addingMode ? onAddAt : undefined} onMarkerClick={onMarkerClick} />
+          <FallbackLeaflet markers={markers} onClick={addingMode ? onAddAt : undefined} onMarkerClick={onMarkerClick} onReady={(m) => (leafletRef.current = m)} />
         ) : (
           <div ref={mapContainer} className="absolute inset-0" />
         )}

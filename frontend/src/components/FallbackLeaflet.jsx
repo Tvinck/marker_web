@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-export default function FallbackLeaflet({ markers = [], onClick, onMarkerClick }) {
+export default function FallbackLeaflet({ markers = [], onClick, onMarkerClick, onReady }) {
   const ref = useRef(null);
   const mapRef = useRef(null);
 
@@ -21,7 +21,9 @@ export default function FallbackLeaflet({ markers = [], onClick, onMarkerClick }
         map.setView([pos.coords.latitude, pos.coords.longitude], 14);
       });
     }
-  }, [onClick]);
+
+    onReady && onReady(map);
+  }, [onClick, onReady]);
 
   useEffect(() => {
     const map = mapRef.current; if (!map) return;
