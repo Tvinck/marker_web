@@ -129,6 +129,19 @@ function MapPage() {
 
       <MapView markers={markers} onMarkerClick={setSelected} addingMode={adding} onAddAt={onAddAt} styleId={styleId} />
 
+      {/* Floating Add Marker Button */}
+      <div className="fixed bottom-[180px] left-1/2 z-30 -translate-x-1/2">
+        <Button
+          onClick={() => {
+            setAdding(true);
+            toast({ title: "Режим добавления", description: "Тапните по карте, чтобы поставить метку" });
+          }}
+          className="rounded-full h-12 px-6 shadow-lg"
+        >
+          <Plus className="mr-2" size={18} /> Добавить метку
+        </Button>
+      </div>
+
       <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -195,12 +208,10 @@ function ProPage() {
   const [user, setUser] = useState(s.user);
 
   const handleTrial = async () => {
-    // Try real backend; fallback to mock
     try {
       const res = await fetch(`${BACKEND_URL}/api/payments/create?client_id=${clientId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plan: "trial" }) });
       if (res.ok) { const data = await res.json(); window.open(data.paymentUrl || data.url, "_blank"); return; }
     } catch {}
-    // Mock
     grantProTrial(clientId);
     setUser(getStore(clientId).user);
     toast({ title: "PRO активирован (мок)", description: "Пробный месяц подключён" });
@@ -248,7 +259,7 @@ function ProfilePage() {
   );
 }
 
-function AdminPage() { const clientId = useClientId(); const [pending, setPending] = useState(getPending(clientId)); if (!isAdmin(clientId)) { return (<MainLayout title="Модерация"><p className="text-sm text-muted-foreground">Доступ запрещён. Вы не администратор.</p></MainLayout>); } const act = (id, ok) => { adminApprove(clientId, id, ok); setPending(getPending(clientId)); toast({ title: ok ? "Метка одобрена" : "Отклонено" }); }; return (<MainLayout title="Модерация">{pending.length === 0 ? (<p className="text-sm text-muted-foreground">Нет новых меток</p>) : (<div className="space-y-2">{pending.map((m) => (<Card key={m.id}><CardHeader><CardTitle className="text-base">{m.title}</CardTitle><CardDescription>{m.description}</CardDescription></CardHeader><CardContent className="space-y-2"><Gallery items={m.media} /><div className="flex gap-2"><Button onClick={() => act(m.id, true)}>Одобрить</Button><Button variant="secondary" onClick={() => act(m.id, false)}>Отклонить</Button></div></CardContent></Card>))}</div>)}</MainLayout>); }
+function AdminPage() { const clientId = useClientId(); const [pending, setPending] = useState(getPending(clientId)); if (!isAdmin(clientId)) { return (<MainLayout title="Модерация"><p className="text-sm text-muted-foreground">Доступ запрещён. Вы не администратор.</p></MainLayout>); } const act = (id, ok) => { adminApprove(clientId, id, ok); setPending(getPending(clientId)); toast({ title: ok ? "Метка одобрена" : "Отклонено" }); }; return (<MainLayout title="Модерация">{pending.length === 0 ? (<p className="text-sm text-muted-foreground">Нет новых меток</p>) : (<div className="space-y-2">{pending.map((m) => (<Card key={m.id}><CardHeader><CardTitle className="text-base">{m.title}</CardTitle><CardDescription>{m.description}</CardDescription></CardHeader><CardContent className="space-y-2"><Gallery items={m.media} /><div className="flex gap-2"><Button onClick={() => act(m.id, true)}>Одобрить</Button><Button variant="secondary" onClick={() => act(m.id, false)}>Отклонить</Button></CardContent></Card>))}</div>)}</MainLayout>); }
 
 function AdvertisePage() { return (<MainLayout title="Реклама" subtitle="Оставьте заявку на сотрудничество"><Card><CardContent className="p-4"><form className="space-y-3" onSubmit={(e) => { e.preventDefault(); toast({ title: "Заявка отправлена (мок)", description: "Мы свяжемся с вами" }); e.currentTarget.reset(); }}><div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><div><Label>Компания</Label><Input required placeholder="ООО Реклама" /></div><div><Label>Телефон/Telegram</Label><Input required placeholder="@username" /></div></div><div><Label>Комментарий</Label><Textarea placeholder="Опишите задачу" /></div><Button type="submit">Отправить</Button></form></CardContent></Card><div className="mt-4 text-xs text-muted-foreground">Оплата и интеграции будут реализованы через ENOT после подключения бэкенда.</div></MainLayout>); }
 
